@@ -1,49 +1,49 @@
 {
-  "name": "Jinsoo Clinic - All in One Followup (Placeholder)",
+  "name": "Jinsoo Clinic - ALL IN ONE (UID+Followup+Birthday+Botox4M+ConfirmZ) [PLACEHOLDER]",
   "nodes": [
     {
-      "parameters": {
-        "path": "line-clinic-all-in-one",
-        "options": {}
-      },
-      "id": "Webhook_Line_Entry",
+      "id": "Webhook1",
       "name": "LINE Register Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        -1160,
-        40
+        -1280,
+        0
       ],
-      "webhookId": "line-clinic-all-in-one"
+      "webhookId": "line-clinic-all-in-one",
+      "parameters": {
+        "path": "line-clinic-all-in-one",
+        "options": {}
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const e = $json.body?.events?.[0] || $json.events?.[0] || {};\nconst userId = e.source?.userId || '';\nconst replyToken = e.replyToken || '';\nconst text = (e.message?.text || '').trim();\nconst rawPhone = text.replace(/[^0-9]/g, '');\nconst normalizedPhone = rawPhone.length === 10 ? rawPhone : (rawPhone.length === 9 ? '0' + rawPhone : rawPhone);\n\nreturn [{\n  userId,\n  replyToken,\n  inputText: text,\n  phone: normalizedPhone,\n  hasValidPhone: /^0[0-9]{9}$/.test(normalizedPhone)\n}];"
-      },
-      "id": "Code_Parse_Input",
-      "name": "Parse UID + Phone",
+      "id": "CodeParse",
+      "name": "Parse Event + Phone",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -930,
-        40
-      ]
+        -1060,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const e = $json.body?.events?.[0] || $json.events?.[0] || {}; const userId=e.source?.userId||''; const text=(e.message?.text||'').trim(); const raw=text.replace(/[^0-9]/g,''); const phone=raw.length===9?'0'+raw:raw; return [{userId,text,phone,validPhone:/^0\\d{9}$/.test(phone)}];"
+      }
     },
     {
+      "id": "GS228",
+      "name": "GS Read 22.8",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -840,
+        -120
+      ],
       "parameters": {
         "operation": "read",
         "documentId": "YOUR_SPREADSHEET_ID",
         "sheetName": "22.8",
         "options": {}
       },
-      "id": "GS_Read_228",
-      "name": "GS Read 22.8",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4,
-      "position": [
-        -700,
-        -80
-      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "YOUR_GOOGLE_SHEETS_CRED_ID",
@@ -52,20 +52,20 @@
       }
     },
     {
+      "id": "GSTAP",
+      "name": "GS Read tap: งาม",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -840,
+        120
+      ],
       "parameters": {
         "operation": "read",
         "documentId": "YOUR_SPREADSHEET_ID",
         "sheetName": "tap: งาม",
         "options": {}
       },
-      "id": "GS_Read_Tap",
-      "name": "GS Read tap: งาม",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4,
-      "position": [
-        -700,
-        170
-      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "YOUR_GOOGLE_SHEETS_CRED_ID",
@@ -74,32 +74,40 @@
       }
     },
     {
-      "parameters": {
-        "mode": "combine"
-      },
-      "id": "Merge_Sheets",
+      "id": "MergeSheets",
       "name": "Merge Sheet Data",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
       "position": [
-        -470,
-        40
-      ]
+        -620,
+        0
+      ],
+      "parameters": {
+        "mode": "append"
+      }
     },
     {
-      "parameters": {
-        "jsCode": "const trigger = $('Parse UID + Phone').item.json;\nconst rows = $input.all().map(i => i.json);\nconst uid = trigger.userId || '';\nconst phone = trigger.phone || '';\n\nconst norm = (p) => String(p || '').replace(/[^0-9]/g, '').replace(/^66/, '0');\n\nconst uidRow = rows.find(r => String(r.UID || r.uid || '').trim() === uid);\nconst phoneRow = rows.find(r => norm(r.เบอร์โทร || r.phone || r.Phone || '') === norm(phone));\n\nreturn [{\n  ...trigger,\n  uidFound: !!uidRow,\n  phoneFound: !!phoneRow,\n  selectedRow: uidRow || phoneRow || null\n}];"
-      },
-      "id": "Code_Check_UID_Phone",
-      "name": "Check UID + Phone Match",
+      "id": "CodeUID",
+      "name": "Check UID / Match Phone",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -250,
-        40
-      ]
+        -400,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const t=$('Parse Event + Phone').item.json; const rows=$input.all().map(i=>i.json); const norm=p=>String(p||'').replace(/[^0-9]/g,'').replace(/^66/,'0'); const uidFound=rows.some(r=>String(r.UID||r.uid||'').trim()===String(t.userId||'').trim()); const phoneFound=rows.some(r=>norm(r['เบอร์โทร']||r.phone||r.Phone||'')===norm(t.phone)); return [{...t,uidFound,phoneFound}];"
+      }
     },
     {
+      "id": "IFUid",
+      "name": "UID Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        0
+      ],
       "parameters": {
         "conditions": {
           "boolean": [
@@ -109,37 +117,57 @@
             }
           ]
         }
-      },
-      "id": "IF_UID_Exists",
-      "name": "UID Exists?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [
-        -20,
-        40
-      ]
+      }
     },
     {
-      "parameters": {
-        "conditions": {
-          "boolean": [
-            {
-              "value1": "={{$json.hasValidPhone}}",
-              "value2": true
-            }
-          ]
-        }
-      },
-      "id": "IF_Valid_Phone",
+      "id": "IFValidPhone",
       "name": "Valid Phone?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        210,
-        190
-      ]
+        40,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.validPhone}}",
+              "value2": true
+            }
+          ]
+        }
+      }
     },
     {
+      "id": "IFPhoneFound",
+      "name": "Phone Found in Sheet?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        260,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.phoneFound}}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "AskPhone",
+      "name": "LINE Ask Contact Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        260,
+        280
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.line.me/v2/bot/message/push",
@@ -158,19 +186,19 @@
         },
         "sendBody": true,
         "specifyBody": "expression",
-        "jsonBody": "={{ {\n  to: $json.userId,\n  messages: [\n    { type: 'text', text: 'รบกวนพิมพ์เบอร์ติดต่อ 10 หลัก เพื่อยืนยันข้อมูลนะครับ' }\n  ]\n} }}",
+        "jsonBody": "={{ { to: $json.userId, messages: [{ type: 'text', text: 'รบกวนพิมพ์เบอร์ติดต่อ 10 หลักเพื่อยืนยันข้อมูลนะครับ' }] } }}",
         "options": {}
-      },
-      "id": "HTTP_Ask_Phone",
-      "name": "LINE Ask Phone",
+      }
+    },
+    {
+      "id": "BadPhone",
+      "name": "LINE Ask Phone Again",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
-        450,
-        310
-      ]
-    },
-    {
+        500,
+        280
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.line.me/v2/bot/message/push",
@@ -189,19 +217,19 @@
         },
         "sendBody": true,
         "specifyBody": "expression",
-        "jsonBody": "={{ {\n  to: $json.userId,\n  messages: [\n    { type: 'text', text: 'ไม่พบข้อมูลเบอร์นี้ในระบบครับ รบกวนตรวจสอบและส่งเบอร์ติดต่ออีกครั้งนะครับ' }\n  ]\n} }}",
+        "jsonBody": "={{ { to: $json.userId, messages: [{ type: 'text', text: 'เบอร์ไม่ถูกต้องหรือไม่พบในระบบครับ รบกวนส่งเบอร์ติดต่ออีกครั้งนะครับ' }] } }}",
         "options": {}
-      },
-      "id": "HTTP_Phone_Invalid",
-      "name": "LINE Phone Invalid",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [
-        690,
-        230
-      ]
+      }
     },
     {
+      "id": "AppendUID",
+      "name": "Append UID from Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        500,
+        120
+      ],
       "parameters": {
         "operation": "append",
         "documentId": "YOUR_SPREADSHEET_ID",
@@ -216,14 +244,6 @@
         },
         "options": {}
       },
-      "id": "GS_Append_UID",
-      "name": "Append UID from Log",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4,
-      "position": [
-        690,
-        90
-      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "YOUR_GOOGLE_SHEETS_CRED_ID",
@@ -232,6 +252,14 @@
       }
     },
     {
+      "id": "Cron11",
+      "name": "Daily 11:00",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        560
+      ],
       "parameters": {
         "triggerTimes": {
           "item": [
@@ -242,31 +270,23 @@
             }
           ]
         }
-      },
-      "id": "Cron_Daily_11",
-      "name": "Daily 11:00",
-      "type": "n8n-nodes-base.cron",
-      "typeVersion": 1,
-      "position": [
-        -1150,
-        560
-      ]
+      }
     },
     {
+      "id": "GSFollow",
+      "name": "GS Read Follow Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -1060,
+        560
+      ],
       "parameters": {
         "operation": "read",
         "documentId": "YOUR_SPREADSHEET_ID",
         "sheetName": "22.8",
         "options": {}
       },
-      "id": "GS_Read_Follow",
-      "name": "GS Read Followup",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4,
-      "position": [
-        -920,
-        560
-      ],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "YOUR_GOOGLE_SHEETS_CRED_ID",
@@ -275,19 +295,27 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "const rows = $input.all().map(i => i.json);\nconst out = [];\nconst today = new Date();\nconst start = new Date(today.getFullYear(), today.getMonth(), today.getDate());\n\nfunction dayDiff(d1, d2){\n  const a = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());\n  const b = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate());\n  return Math.round((a - b)/86400000);\n}\n\nfor (const r of rows){\n  const uid = r.UID || r.uid || '';\n  if (!uid) continue;\n  const doneDateRaw = r.วันที่ทำ || r.doneDate || r.date || '';\n  const doneDate = new Date(doneDateRaw);\n  if (String(doneDate) === 'Invalid Date') continue;\n  const d = dayDiff(start, doneDate);\n  if (![1,7,14].includes(d)) continue;\n\n  let message = '';\n  if (d === 1){\n    message = `สวัสดีครับ${r.ชื่อลูกค้า ? 'คุณ' + r.ชื่อลูกค้า : ''} 🙏\\nหนูขออนุญาตติดตามอาการหลังทำหัตถการวันแรก เป็นอย่างไรบ้างครับ มีอาการบวม หรือไม่สบายตัวตรงไหนไหมครับ\\n--------------------------------------------------\\nหนูขอแจ้งรายละเอียดที่เข้ารับบริการนะครับ\\nวันที่ : ${r.วันที่ทำ || '-'}\\n${r.หัตถการ || '-'}\\nยอดชำระ : ${r.ยอดชำระ || '-'}\\n--------------------------------------------------\\nนัดติดตามผล : ${r.นัดติดตาม || '-'}\\n--------------------------------------------------\\nสาขา : ${r.สาขา || 'งามวงศ์วาน'}\\n☎ : 063-446-6931\\nเริ่มรับคิวแรกช่วง 11:30 น.\\nรับคิวสุดท้ายไม่เกิน 20:00 น.\\n⛔คลินิกปิดทุกวันพุธนะครับ⛔`;\n  } else if (d === 7){\n    message = `สวัสดีครับ${r.ชื่อลูกค้า ? 'คุณ' + r.ชื่อลูกค้า : ''} 🙏\\nหนูขอติดตามอาการหลังทำหัตถการครบ 7 วันนะครับ หากมีข้อกังวลหรืออาการผิดปกติ แจ้งหนูได้ทันทีเลยครับ`;\n  } else {\n    message = `สวัสดีครับ${r.ชื่อลูกค้า ? 'คุณ' + r.ชื่อลูกค้า : ''} 🙏\\nหนูขอติดตามผลครบ 14 วันนะครับ หากต้องการเข้าตรวจประเมินเพิ่มเติม สามารถทักมาเพื่อนัดได้เลยครับ`;\n  }\n\n  out.push({json: {uid, followupDay: d, message}});\n}\n\nreturn out;"
-      },
-      "id": "Code_Build_Followup",
-      "name": "Build D1/D7/D14 Messages",
+      "id": "CodeFollow",
+      "name": "Build Followup/Birthday/Botox4M",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -680,
+        -840,
         560
-      ]
+      ],
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(i=>i.json);const out=[];const now=new Date();const t=new Date(now.getFullYear(),now.getMonth(),now.getDate());const dd=(a,b)=>Math.round((new Date(a.getFullYear(),a.getMonth(),a.getDate())-new Date(b.getFullYear(),b.getMonth(),b.getDate()))/86400000);for(const r of rows){const uid=r.UID||'';if(!uid)continue;const name=r['ชื่อลูกค้า']||'';const done=new Date(r['วันที่ทำ']||'');if(String(done)!=='Invalid Date'){const d=dd(t,done);if([1,7,14].includes(d)){let m=d===1?`สวัสดีครับ${name?`คุณ${name}`:''} 🙏\\nหนูขออนุญาตติดตามอาการหลังทำหัตถการวันแรก เป็นอย่างไรบ้างครับ มีอาการบวม หรือไม่สบายตัวตรงไหนไหมครับ`:d===7?`สวัสดีครับ${name?`คุณ${name}`:''} 🙏\\nหนูขอติดตามอาการหลังทำหัตถการครบ 7 วันนะครับ`:`สวัสดีครับ${name?`คุณ${name}`:''} 🙏\\nหนูขอติดตามผลครบ 14 วันนะครับ`;out.push({json:{uid,message:m,type:`FOLLOWUP_D${d}`}})}}const b=new Date(r['วันเกิด']||'');if(String(b)!=='Invalid Date'&&b.getDate()===t.getDate()&&b.getMonth()===t.getMonth())out.push({json:{uid,type:'BIRTHDAY',message:`สุขสันต์วันเกิดครับ${name?`คุณ${name}`:''} 🎂\\nหนูมอบส่วนลดพิเศษ 5% สำหรับบริการครั้งถัดไปนะครับ`}});const isBotox=String(r['หัตถการ']||'').toLowerCase().includes('botox');if(isBotox&&String(done)!=='Invalid Date'){const m=(t.getFullYear()-done.getFullYear())*12+(t.getMonth()-done.getMonth());if(m===4&&t.getDate()===done.getDate())out.push({json:{uid,type:'BOTOX_4M',message:`สวัสดีครับ${name?`คุณ${name}`:''} 🙏\\nครบ 4 เดือนหลังฉีด Botox แล้วครับ หากต้องการนัดเข้าประเมิน แจ้งหนูได้เลยนะครับ`}})}}return out;"
+      }
     },
     {
+      "id": "LineSendBatch",
+      "name": "LINE Send Batch Messages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -620,
+        560
+      ],
       "parameters": {
         "method": "POST",
         "url": "https://api.line.me/v2/bot/message/push",
@@ -306,19 +334,19 @@
         },
         "sendBody": true,
         "specifyBody": "expression",
-        "jsonBody": "={{ {\n  to: $json.uid,\n  messages: [\n    { type: 'text', text: $json.message }\n  ]\n} }}",
+        "jsonBody": "={{ { to: $json.uid, messages: [{ type: 'text', text: $json.message }] } }}",
         "options": {}
-      },
-      "id": "HTTP_Send_Followup",
-      "name": "LINE Send Followup",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [
-        -440,
-        560
-      ]
+      }
     },
     {
+      "id": "GCalRead",
+      "name": "Google Calendar Read +2d",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        -1060,
+        820
+      ],
       "parameters": {
         "operation": "getAll",
         "calendar": {
@@ -329,17 +357,9 @@
         "returnAll": true,
         "options": {
           "timeMin": "={{$now.toISO()}}",
-          "timeMax": "={{$now.plus({ days: 14 }).toISO()}}"
+          "timeMax": "={{$now.plus({ days: 2 }).toISO()}}"
         }
       },
-      "id": "GCal_Read",
-      "name": "Google Calendar Read",
-      "type": "n8n-nodes-base.googleCalendar",
-      "typeVersion": 1.3,
-      "position": [
-        -920,
-        800
-      ],
       "credentials": {
         "googleCalendarOAuth2Api": {
           "id": "YOUR_GOOGLE_CALENDAR_CRED_ID",
@@ -348,17 +368,48 @@
       }
     },
     {
-      "parameters": {
-        "jsCode": "return $input.all()\n  .map(i => i.json)\n  .filter(e => (e.summary || '').includes('Z') || (e.description || '').includes('Z'))\n  .map(e => ({ json: { calendarEvent: e.summary, start: e.start?.dateTime || e.start?.date || '', note: 'Z filter matched' } }));"
-      },
-      "id": "Code_Filter_Z",
-      "name": "Filter Z Appointments",
+      "id": "CodeConfirm",
+      "name": "Build Tomorrow Confirm (Z)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -680,
-        800
-      ]
+        -840,
+        820
+      ],
+      "parameters": {
+        "jsCode": "const n=new Date();const t=new Date(n.getFullYear(),n.getMonth(),n.getDate()+1);const out=[];for(const i of $input.all()){const e=i.json;const txt=`${e.summary||''} ${e.description||''}`;if(!txt.includes('Z'))continue;const s=new Date(e.start?.dateTime||e.start?.date||'');if(String(s)==='Invalid Date')continue;if(s.getFullYear()===t.getFullYear()&&s.getMonth()===t.getMonth()&&s.getDate()===t.getDate()){const m=txt.match(/UID[:= ]([A-Za-z0-9_-]+)/i);const uid=m?m[1]:'';if(!uid)continue;const hh=String(s.getHours()).padStart(2,'0');const mm=String(s.getMinutes()).padStart(2,'0');out.push({json:{uid,message:`สวัสดีครับ 🙏 ขอคอนเฟิร์มนัดของพรุ่งนี้เวลา ${hh}.${mm} น. นะครับ หากไม่สะดวกแจ้งเลื่อนได้ครับ`,type:'CONFIRM_TOMORROW'}})}}return out;"
+      }
+    },
+    {
+      "id": "LineSendConfirm",
+      "name": "LINE Send Confirm",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -620,
+        820
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.LINE_CHANNEL_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "expression",
+        "jsonBody": "={{ { to: $json.uid, messages: [{ type: 'text', text: $json.message }] } }}",
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -366,14 +417,14 @@
       "main": [
         [
           {
-            "node": "Parse UID + Phone",
+            "node": "Parse Event + Phone",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parse UID + Phone": {
+    "Parse Event + Phone": {
       "main": [
         [
           {
@@ -415,14 +466,14 @@
       "main": [
         [
           {
-            "node": "Check UID + Phone Match",
+            "node": "Check UID / Match Phone",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check UID + Phone Match": {
+    "Check UID / Match Phone": {
       "main": [
         [
           {
@@ -449,6 +500,24 @@
       "main": [
         [
           {
+            "node": "Phone Found in Sheet?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LINE Ask Contact Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phone Found in Sheet?": {
+      "main": [
+        [
+          {
             "node": "Append UID from Log",
             "type": "main",
             "index": 0
@@ -456,18 +525,7 @@
         ],
         [
           {
-            "node": "LINE Ask Phone",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Append UID from Log": {
-      "main": [
-        [
-          {
-            "node": "LINE Phone Invalid",
+            "node": "LINE Ask Phone Again",
             "type": "main",
             "index": 0
           }
@@ -478,45 +536,56 @@
       "main": [
         [
           {
-            "node": "GS Read Followup",
+            "node": "GS Read Follow Data",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Google Calendar Read",
+            "node": "Google Calendar Read +2d",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "GS Read Followup": {
+    "GS Read Follow Data": {
       "main": [
         [
           {
-            "node": "Build D1/D7/D14 Messages",
+            "node": "Build Followup/Birthday/Botox4M",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build D1/D7/D14 Messages": {
+    "Build Followup/Birthday/Botox4M": {
       "main": [
         [
           {
-            "node": "LINE Send Followup",
+            "node": "LINE Send Batch Messages",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Calendar Read": {
+    "Google Calendar Read +2d": {
       "main": [
         [
           {
-            "node": "Filter Z Appointments",
+            "node": "Build Tomorrow Confirm (Z)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Tomorrow Confirm (Z)": {
+      "main": [
+        [
+          {
+            "node": "LINE Send Confirm",
             "type": "main",
             "index": 0
           }
