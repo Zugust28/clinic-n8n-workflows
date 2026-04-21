@@ -191,6 +191,19 @@
       }
     },
     {
+      "id": "DebugLog1",
+      "name": "DebugLog - Phone Missing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        420
+      ],
+      "parameters": {
+        "jsCode": "return $input.all().map(i=>({json:{...i.json,debugEvent:'phone_missing',debugDetails:'requested phone re-entry'}}));"
+      }
+    },
+    {
       "id": "BadPhone",
       "name": "Error Path - Ask Phone Again",
       "type": "n8n-nodes-base.httpRequest",
@@ -219,6 +232,19 @@
         "specifyBody": "expression",
         "jsonBody": "={{ { to: $json.userId, messages: [{ type: 'text', text: 'เบอร์ไม่ถูกต้องหรือไม่พบในระบบครับ รบกวนส่งเบอร์ติดต่ออีกครั้งนะครับ' }] } }}",
         "options": {}
+      }
+    },
+    {
+      "id": "DebugLog2",
+      "name": "DebugLog - Phone Invalid",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        420
+      ],
+      "parameters": {
+        "jsCode": "return $input.all().map(i=>({json:{...i.json,debugEvent:'phone_invalid',debugDetails:'invalid or not found'}}));"
       }
     },
     {
@@ -592,6 +618,28 @@
         [
           {
             "node": "LINE Send Confirm",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Path - Ask Contact Phone": {
+      "main": [
+        [
+          {
+            "node": "DebugLog - Phone Missing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Path - Ask Phone Again": {
+      "main": [
+        [
+          {
+            "node": "DebugLog - Phone Invalid",
             "type": "main",
             "index": 0
           }
