@@ -220,6 +220,36 @@
         "jsonBody": "={{ { to: $json.userId, messages: [{ type: 'text', text: 'เบอร์ไม่ถูกต้องหรือไม่พบในระบบครับ รบกวนส่งเบอร์ติดต่ออีกครั้งนะครับ' }] } }}",
         "options": {}
       }
+    },
+    {
+      "id": "DebugLogAppend",
+      "name": "DebugLog - Append Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        980,
+        420
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": "1PJd4HTQmHKgHFI_DwimOrxGst6QRTr3lAjjkyvT7_Yk",
+        "sheetName": "DebugLog",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{$now.toISO()}}",
+            "Event": "={{$json.debugEvent || $json.type || \"unknown\"}}",
+            "Details": "={{$json.debugDetails || $json.message || \"\"}}"
+          }
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CRED_ID",
+          "name": "Google Sheets OAuth2"
+        }
+      }
     }
   ],
   "connections": {
@@ -352,7 +382,7 @@
       "main": [
         [
           {
-            "node": "DebugLog - Phone Missing",
+            "node": "DebugLog - Append Row",
             "type": "main",
             "index": 0
           }
@@ -363,7 +393,7 @@
       "main": [
         [
           {
-            "node": "DebugLog - Phone Invalid",
+            "node": "DebugLog - Append Row",
             "type": "main",
             "index": 0
           }

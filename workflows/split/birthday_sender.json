@@ -87,6 +87,36 @@
         "jsonBody": "={{ { to: $json.uid, messages: [{ type: 'text', text: $json.message }] } }}",
         "options": {}
       }
+    },
+    {
+      "id": "DebugLogAppend",
+      "name": "DebugLog - Append Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        980,
+        420
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": "1PJd4HTQmHKgHFI_DwimOrxGst6QRTr3lAjjkyvT7_Yk",
+        "sheetName": "DebugLog",
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{$now.toISO()}}",
+            "Event": "={{$json.debugEvent || $json.type || \"unknown\"}}",
+            "Details": "={{$json.debugDetails || $json.message || \"\"}}"
+          }
+        },
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CRED_ID",
+          "name": "Google Sheets OAuth2"
+        }
+      }
     }
   ],
   "connections": {
