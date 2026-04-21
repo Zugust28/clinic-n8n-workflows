@@ -1,0 +1,391 @@
+{
+  "name": "register_lineuid_webhook",
+  "nodes": [
+    {
+      "id": "Webhook1",
+      "name": "LINE Register Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        0
+      ],
+      "webhookId": "line-clinic-all-in-one",
+      "parameters": {
+        "path": "line-clinic-all-in-one",
+        "options": {}
+      }
+    },
+    {
+      "id": "CodeParse",
+      "name": "Parse Event + Phone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1060,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const e = $json.body?.events?.[0] || $json.events?.[0] || {}; const userId=e.source?.userId||''; const text=(e.message?.text||'').trim(); const raw=text.replace(/[^0-9]/g,''); const phone=raw.length===9?'0'+raw:raw; return [{userId,text,phone,validPhone:/^0\\d{9}$/.test(phone)}];"
+      }
+    },
+    {
+      "id": "GS228",
+      "name": "GS Read 22.8",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -840,
+        -120
+      ],
+      "parameters": {
+        "operation": "read",
+        "documentId": "1iOOX7Gh3Ui_t-G51SP0h3KKhP3p2PvJ2zMRP29g_OgI",
+        "sheetName": "งาม",
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CRED_ID",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "id": "GSTAP",
+      "name": "GS Read tap: งาม",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -840,
+        120
+      ],
+      "parameters": {
+        "operation": "read",
+        "documentId": "1iOOX7Gh3Ui_t-G51SP0h3KKhP3p2PvJ2zMRP29g_OgI",
+        "sheetName": "ราช",
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CRED_ID",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "id": "MergeSheets",
+      "name": "Merge Sheet Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -620,
+        0
+      ],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "CodeUID",
+      "name": "Check UID / Match Phone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const t=$('Parse Event + Phone').item.json; const rows=$input.all().map(i=>i.json); const norm=p=>String(p||'').replace(/[^0-9]/g,'').replace(/^66/,'0'); const uidFound=rows.some(r=>String(r.UID||r.uid||'').trim()===String(t.userId||'').trim()); const phoneFound=rows.some(r=>norm(r['เบอร์โทร']||r.phone||r.Phone||'')===norm(t.phone)); return [{...t,uidFound,phoneFound,debugEvent:'match_phone_checked'}];"
+      }
+    },
+    {
+      "id": "IFUid",
+      "name": "UID Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.uidFound}}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "IFValidPhone",
+      "name": "Valid Phone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        40,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.validPhone}}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "IFPhoneFound",
+      "name": "Phone Found in Sheet?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        260,
+        120
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.phoneFound}}",
+              "value2": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "AskPhone",
+      "name": "Error Path - Ask Contact Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        260,
+        280
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.LINE_CHANNEL_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "expression",
+        "jsonBody": "={{ { to: $json.userId, messages: [{ type: 'text', text: 'รบกวนพิมพ์เบอร์ติดต่อ 10 หลักเพื่อยืนยันข้อมูลนะครับ' }] } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "BadPhone",
+      "name": "Error Path - Ask Phone Again",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        500,
+        280
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.LINE_CHANNEL_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "expression",
+        "jsonBody": "={{ { to: $json.userId, messages: [{ type: 'text', text: 'เบอร์ไม่ถูกต้องหรือไม่พบในระบบครับ รบกวนส่งเบอร์ติดต่ออีกครั้งนะครับ' }] } }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "LINE Register Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Event + Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Event + Phone": {
+      "main": [
+        [
+          {
+            "node": "GS Read 22.8",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "GS Read tap: งาม",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Read 22.8": {
+      "main": [
+        [
+          {
+            "node": "Merge Sheet Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Read tap: งาม": {
+      "main": [
+        [
+          {
+            "node": "Merge Sheet Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Sheet Data": {
+      "main": [
+        [
+          {
+            "node": "Check UID / Match Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check UID / Match Phone": {
+      "main": [
+        [
+          {
+            "node": "UID Exists?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UID Exists?": {
+      "main": [
+        [
+          {
+            "node": "DebugLog - UID Exists",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Valid Phone?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Phone?": {
+      "main": [
+        [
+          {
+            "node": "Phone Found in Sheet?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LINE Ask Contact Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phone Found in Sheet?": {
+      "main": [
+        [
+          {
+            "node": "Append UID from Log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LINE Ask Phone Again",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Path - Ask Contact Phone": {
+      "main": [
+        [
+          {
+            "node": "DebugLog - Phone Missing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Path - Ask Phone Again": {
+      "main": [
+        [
+          {
+            "node": "DebugLog - Phone Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "clinic"
+    },
+    {
+      "name": "register"
+    }
+  ]
+}

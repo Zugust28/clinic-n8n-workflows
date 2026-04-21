@@ -1,0 +1,149 @@
+{
+  "name": "followup_daily",
+  "nodes": [
+    {
+      "id": "Cron11",
+      "name": "Daily 11:00",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -1280,
+        560
+      ],
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 11,
+              "minute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "GSFollow",
+      "name": "GS Read Follow Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -1060,
+        560
+      ],
+      "parameters": {
+        "operation": "read",
+        "documentId": "1PJd4HTQmHKgHFI_DwimOrxGst6QRTr3lAjjkyvT7_Yk",
+        "sheetName": "Patients",
+        "options": {}
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CRED_ID",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "id": "CodeFollow",
+      "name": "Build Followup/Birthday/Botox4M",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -840,
+        560
+      ],
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(i=>i.json);const out=[];const now=new Date();const t=new Date(now.getFullYear(),now.getMonth(),now.getDate());const dd=(a,b)=>Math.round((new Date(a.getFullYear(),a.getMonth(),a.getDate())-new Date(b.getFullYear(),b.getMonth(),b.getDate()))/86400000);for(const r of rows){const uid=r.UID||'';if(!uid)continue;const name=r['ชื่อลูกค้า']||'';const done=new Date(r['วันที่ทำ']||'');if(String(done)!=='Invalid Date'){const d=dd(t,done);if([1,7,14].includes(d)){let m=d===1?`สวัสดีครับ${name?`คุณ${name}`:''} 🙏\\nหนูขออนุญาตติดตามอาการหลังทำหัตถการวันแรก เป็นอย่างไรบ้างครับ มีอาการบวม หรือไม่สบายตัวตรงไหนไหมครับ`:d===7?`สวัสดีครับ${name?`คุณ${name}`:''} 🙏\\nหนูขอติดตามอาการหลังทำหัตถการครบ 7 วันนะครับ`:`สวัสดีครับ${name?`คุณ${name}`:''} 🙏\\nหนูขอติดตามผลครบ 14 วันนะครับ`;out.push({json:{uid,message:m,type:`FOLLOWUP_D${d}`}})}}const b=new Date(r['วันเกิด']||'');if(String(b)!=='Invalid Date'&&b.getDate()===t.getDate()&&b.getMonth()===t.getMonth())out.push({json:{uid,type:'BIRTHDAY',message:`สุขสันต์วันเกิดครับ${name?`คุณ${name}`:''} 🎂\\nหนูมอบส่วนลดพิเศษ 5% สำหรับบริการครั้งถัดไปนะครับ`}});const isBotox=String(r['หัตถการ']||'').toLowerCase().includes('botox');if(isBotox&&String(done)!=='Invalid Date'){const m=(t.getFullYear()-done.getFullYear())*12+(t.getMonth()-done.getMonth());if(m===4&&t.getDate()===done.getDate())out.push({json:{uid,type:'BOTOX_4M',message:`สวัสดีครับ${name?`คุณ${name}`:''} 🙏\\nครบ 4 เดือนหลังฉีด Botox แล้วครับ หากต้องการนัดเข้าประเมิน แจ้งหนูได้เลยนะครับ`}})}}return out.map(x=>({json:{...x.json,debugEvent:'send_candidate'}}));"
+      }
+    },
+    {
+      "id": "LineSendBatch",
+      "name": "DebugLog - Send Batch Messages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -620,
+        560
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/push",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.LINE_CHANNEL_ACCESS_TOKEN}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "expression",
+        "jsonBody": "={{ { to: $json.uid, messages: [{ type: 'text', text: $json.message }] } }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Daily 11:00": {
+      "main": [
+        [
+          {
+            "node": "GS Read Follow Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Calendar Read +2d",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GS Read Follow Data": {
+      "main": [
+        [
+          {
+            "node": "Build Followup/Birthday/Botox4M",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Followup/Birthday/Botox4M": {
+      "main": [
+        [
+          {
+            "node": "LINE Send Batch Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "clinic"
+    },
+    {
+      "name": "followup"
+    }
+  ]
+}
